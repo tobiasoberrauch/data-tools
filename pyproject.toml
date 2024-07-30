@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "data-tools"
+version = "0.1.0"
+description = ""
+authors = ["Tobias Oberrauch <tobias.oberrauch@audius.de>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.111.1"
+pydantic = "^2.8.2"
+pytube = "^15.0.0"
+torch = "^2.4.0"
+whisperx = "^3.1.5"
+moviepy = "^1.0.3"
+streamlit = "^1.37.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
