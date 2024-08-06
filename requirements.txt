@@ -2,7 +2,7 @@ yt-dlp
 whisperx
 moviepy
 imagehash
-python-opencv
+opencv-python
 torch
 Pillow
 streamlit
