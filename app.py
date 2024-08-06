@@ -1,17 +1,29 @@
 import os
-
 import streamlit as st
-
 from data_tools.utils import (
     associate_screenshots_with_transcription,
     convert_to_mp3,
     download_playlist,
     download_video,
     extract_screenshots,
+    extract_screenshots_generator,
     transcribe_video,
     save_transcription,
     transcribe_audio,
 )
+from PIL import Image
+
+def extract_and_display_screenshots(video_path, transcription):
+    st.write("Extracting screenshots...")
+    screenshots = extract_screenshots(video_path, transcription)
+
+    st.write("Associating screenshots with transcription...")
+    associated_data = associate_screenshots_with_transcription(screenshots, transcription)
+
+    st.write("Transcription and Screenshots:")
+    for screenshot, text in associated_data:
+        st.image(screenshot, caption=text, use_column_width=True)
+    return associated_data
 
 # Streamlit UI
 st.title("Comprehensive YouTube and Audio Processing App")
@@ -33,13 +45,7 @@ if st.button("Automate All"):
         transcription_auto = transcribe_audio(audio_path_auto)
         json_path_auto = save_transcription(transcription_auto, audio_path_auto)
 
-        st.write("Extracting screenshots...")
-        screenshots_auto = extract_screenshots(video_path_auto, transcription_auto)
-
-        st.write("Associating screenshots with transcription...")
-        associated_data_auto = associate_screenshots_with_transcription(
-            screenshots_auto, transcription_auto
-        )
+        associated_data_auto = extract_and_display_screenshots(video_path_auto, transcription_auto)
 
         st.success("All tasks completed successfully!")
         st.download_button(
@@ -53,10 +59,6 @@ if st.button("Automate All"):
             file_name=f"{os.path.basename(audio_path_auto)}.json",
             mime="application/json",
         )
-
-        st.write("Transcription and Screenshots:")
-        for screenshot, text in associated_data_auto:
-            st.image(screenshot, caption=text, use_column_width=True)
     else:
         st.error("Video download failed.")
 
@@ -74,17 +76,7 @@ if st.button("Download and Transcribe Video"):
             st.write("Transcription:")
             st.write(transcription)
 
-            st.write("Extracting screenshots...")
-            screenshots = extract_screenshots(video_path, transcription)
-
-            st.write("Associating screenshots with transcription...")
-            associated_data = associate_screenshots_with_transcription(
-                screenshots, transcription
-            )
-
-            st.write("Transcription and Screenshots:")
-            for screenshot, text in associated_data:
-                st.image(screenshot, caption=text, use_column_width=True)
+            extract_and_display_screenshots(video_path, transcription)
         else:
             st.error("Transcription failed.")
     else:
@@ -120,7 +112,7 @@ if uploaded_file_video is not None:
 # Section for audio transcription
 st.header("Audio Transcription App")
 uploaded_file_audio = st.file_uploader(
-    "Upload an audio file", type=["mp3", "wav", "m4a", "mp4"], key="audio_uploader"
+    "Upload an audio file", type=["mp3", "wav"], key="audio_uploader"
 )
 
 if uploaded_file_audio is not None:
@@ -146,3 +138,23 @@ if uploaded_file_audio is not None:
         )
 
         st.json(transcription)
+
+
+st.header("extract screenshots from video")
+video_from_screenshot_extracting = st.file_uploader("video_from_screenshot_extracting", type=["mp4"], key="video_from_screenshot_extracting")
+if video_from_screenshot_extracting is not None:
+    video_path = video_from_screenshot_extracting.name
+    with open(video_path, "wb") as f:
+        f.write(video_from_screenshot_extracting.getbuffer())
+
+    st.write("Extracting screenshots...")
+    screenshot_generator = extract_screenshots_generator(video_path)
+    screenshot_placeholder = st.empty()
+
+    for timestamp, screenshot_path in screenshot_generator:
+        saved_image = Image.open(screenshot_path)
+        screenshot_placeholder.image(saved_image, caption=f"Timestamp: {timestamp:.2f} seconds", use_column_width=True)
+
+
+st.header("Transform transkript json file to txt file")
+y

@@ -54,35 +54,51 @@ def transcribe_audio(audio_path):
     return transcription
 
 
-def extract_screenshots(video_path, transcription, output_folder="screenshots", hash_size=8, threshold=10):
+def process_frame(frame, frame_count, fps, prev_hash, hash_size, threshold, output_folder):
+    timestamp = frame_count / fps
+    pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+    curr_hash = imagehash.average_hash(pil_image, hash_size=hash_size)
+    if prev_hash is None or abs(curr_hash - prev_hash) > threshold:
+        screenshot_path = os.path.join(output_folder, f"screenshot_{frame_count}.png")
+        cv2.imwrite(screenshot_path, frame)
+        return curr_hash, timestamp, screenshot_path
+    return prev_hash, None, None
+
+def extract_screenshots_generator(video_path, output_folder="./tmp/screenshots", hash_size=8, threshold=10):
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
     frame_count = 0
-    screenshot_count = 0
-    screenshots = []
-
     prev_hash = None
     
     success, frame = cap.read()
     while success:
         frame_count += 1
-        timestamp = frame_count / fps
+        prev_hash, timestamp, screenshot_path = process_frame(frame, frame_count, fps, prev_hash, hash_size, threshold, output_folder)
+        if screenshot_path:
+            yield timestamp, screenshot_path
+        success, frame = cap.read()
+    
+    cap.release()
 
-        # Convert frame to PIL image for hashing
-        pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        curr_hash = imagehash.average_hash(pil_image, hash_size=hash_size)
-        
-        # Compare the current frame hash to the previous frame hash
-        if prev_hash is None or abs(curr_hash - prev_hash) > threshold:
-            screenshot_path = os.path.join(output_folder, f"screenshot_{screenshot_count}.png")
-            cv2.imwrite(screenshot_path, frame)
+def extract_screenshots(video_path, output_folder="./tmp/screenshots", hash_size=8, threshold=10):
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    
+    cap = cv2.VideoCapture(video_path)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_count = 0
+    prev_hash = None
+    screenshots = []
+    
+    success, frame = cap.read()
+    while success:
+        frame_count += 1
+        prev_hash, timestamp, screenshot_path = process_frame(frame, frame_count, fps, prev_hash, hash_size, threshold, output_folder)
+        if screenshot_path:
             screenshots.append((timestamp, screenshot_path))
-            screenshot_count += 1
-            prev_hash = curr_hash
-        
         success, frame = cap.read()
     
     cap.release()
@@ -111,11 +127,21 @@ def download_video(video_input, video_download_path):
     return filename
 
 
-def convert_to_mp3(video_path):
-    audio_path = f"{video_path}.mp3"
-    video = VideoFileClip(video_path)
-    video.audio.write_audiofile(audio_path)
-    return audio_path
+def convert_videos_to_mp3(source_path, destination_path):
+    '''
+    It will load all videos files from source_path. Then converts to mp3 and save it to destination_path
+    '''
+    logging.info("Converting videos to mp3")
+
+    videos = [f for f in os.listdir(source_path) if f.endswith(".mp4")]
+
+    for video in videos:
+        video_path = os.path.join(source_path, video)
+        audio_path = os.path.join(destination_path, f"{os.path.splitext(video)[0]}.mp3")
+        
+        video = VideoFileClip(video_path)
+        video.audio.write_audiofile(audio_path)
+
 
 def convert_video_to_audio(video_path):
     audio_path = f"{video_path}.mp3"
@@ -124,6 +150,31 @@ def convert_video_to_audio(video_path):
     video.audio.write_audiofile(audio_path)
 
     return audio_path
+
+
+def transcribe_mp3s(source_path: str, target_path: str):
+    DEVICE = "cpu"
+    COMPUTE_TYPE = "float32"
+    model = whisperx.load_model("large-v2", DEVICE, compute_type=COMPUTE_TYPE)
+
+    audios = [f for f in os.listdir(source_path) if f.endswith(".mp3")]
+
+    for audio in audios:
+        result = model.transcribe(f"{source_path}/{audio}")
+
+        result_path = os.path.join(target_path, f"{os.path.splitext(audio)[0]}.json")
+        with open(result_path, "w", encoding='utf8') as json_file:
+            json.dump(result, json_file, indent=4)
+
+
+def diarize_speakers(audio_path: str, diarize_path: str):
+    DEVICE = "cpu"
+    COMPUTE_TYPE = "float32"
+    model = whisperx.load_model("large-v2", DEVICE, compute_type=COMPUTE_TYPE)
+
+    result = model.transcribe(audio_path)
+
+    result_path = os.path.join(diarize_path, f"{os.path.splitext(audio_path)[0]}.json")
 
 
 def transcribe_video(video_path):
