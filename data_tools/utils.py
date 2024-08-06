@@ -8,6 +8,11 @@ import cv2
 import imagehash
 from PIL import Image
 import json
+import torch
+
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+COMPUTE_TYPE = "float32" if DEVICE == "cuda" else "int8"
+BATCH_SIZE = 2 if DEVICE == "cuda" else 1
 
 def save_transcription(transcription, audio_path):
     json_path = f"{audio_path}.json"
@@ -133,7 +138,11 @@ def convert_videos_to_mp3(source_path, destination_path):
     '''
     logging.info("Converting videos to mp3")
 
-    videos = [f for f in os.listdir(source_path) if f.endswith(".mp4")]
+    # create destination folder if not exists
+    if not os.path.exists(destination_path):
+        os.makedirs(destination_path)
+
+    videos = [f for f in os.listdir(source_path) if f.endswith(".mp4") or f.endswith(".webm")]
 
     for video in videos:
         video_path = os.path.join(source_path, video)
@@ -153,8 +162,6 @@ def convert_video_to_audio(video_path):
 
 
 def transcribe_mp3s(source_path: str, target_path: str):
-    DEVICE = "cpu"
-    COMPUTE_TYPE = "float32"
     model = whisperx.load_model("large-v2", DEVICE, compute_type=COMPUTE_TYPE)
 
     audios = [f for f in os.listdir(source_path) if f.endswith(".mp3")]
@@ -167,14 +174,30 @@ def transcribe_mp3s(source_path: str, target_path: str):
             json.dump(result, json_file, indent=4)
 
 
-def diarize_speakers(audio_path: str, diarize_path: str):
-    DEVICE = "cpu"
-    COMPUTE_TYPE = "float32"
+def diarize_speakers(audio_path: str):
+    audio = whisperx.load_audio(audio_path)
     model = whisperx.load_model("large-v2", DEVICE, compute_type=COMPUTE_TYPE)
 
-    result = model.transcribe(audio_path)
+    transcription = model.transcribe(audio_path, batch_size=BATCH_SIZE, print_progress=True)
 
-    result_path = os.path.join(diarize_path, f"{os.path.splitext(audio_path)[0]}.json")
+    align_model, metadata = whisperx.load_align_model(
+        language_code=transcription["language"], device=DEVICE
+    )
+
+    aligned_transcription = whisperx.align(
+        transcription["segments"],
+        align_model,
+        metadata,
+        audio,
+        device=DEVICE,
+        return_char_alignments=False,
+    )
+    
+    diarize_model = whisperx.DiarizationPipeline(device=DEVICE)
+
+    diarization_result = diarize_model(audio)
+
+    return whisperx.assign_word_speakers(diarization_result, aligned_transcription)
 
 
 def transcribe_video(video_path):
