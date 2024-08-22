@@ -2,7 +2,7 @@ import os
 import streamlit as st
 from data_tools.utils import (
     associate_screenshots_with_transcription,
-    convert_to_mp3,
+    convert_video_to_audio,
     download_playlist,
     download_video,
     extract_screenshots,
@@ -39,7 +39,7 @@ if st.button("Automate All"):
         st.write("Video downloaded to:", video_path_auto)
 
         st.write("Converting video to MP3...")
-        audio_path_auto = convert_to_mp3(video_path_auto)
+        audio_path_auto = convert_video_to_audio(video_path_auto)
 
         st.write("Transcribing audio...")
         transcription_auto = transcribe_audio(audio_path_auto)
@@ -157,4 +157,3 @@ if video_from_screenshot_extracting is not None:
 
 
 st.header("Transform transkript json file to txt file")
-y

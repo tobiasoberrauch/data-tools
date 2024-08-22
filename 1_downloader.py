@@ -6,7 +6,7 @@ st.title("YouTube Video Downloader and Transcriber")
 
 # Input for video URL
 video_url = st.text_input("Enter YouTube video URL")
-download_path = st.text_input("Enter download path", "./tmp")
+download_path = st.text_input("Enter download path", "./efrag/bronze")
 
 if st.button("Download and Transcribe"):
     video_path = download_video(video_url, download_path)

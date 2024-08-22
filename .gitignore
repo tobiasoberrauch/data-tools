@@ -1,3 +1,5 @@
 data
 idw
 .pytest_cache
+.env
+tmp

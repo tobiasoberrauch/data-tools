@@ -23,7 +23,7 @@ st.title("Audio Transcription App")
 uploaded_file = st.file_uploader("Upload an audio file", type=["mp3", "wav", "m4a", "mp4"])
 
 if uploaded_file is not None:
-    audio_path = os.path.join("temp", uploaded_file.name)
+    audio_path = os.path.join("tmp", uploaded_file.name)
     
     # Save uploaded file to disk
     with open(audio_path, "wb") as f:
