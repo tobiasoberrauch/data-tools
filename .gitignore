@@ -3,3 +3,5 @@ idw
 .pytest_cache
 .env
 tmp
+input
+__pycache__
